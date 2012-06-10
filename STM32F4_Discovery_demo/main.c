@@ -69,7 +69,6 @@ static bool_t mmc_is_protected(void) {return FALSE; }
 
 // Scrap Buffer
 uint8_t buf[2048];
-uint8_t buf2[2048];
 
 // MMC Card Insertion Event Handler
 static void InsertHandler(eventid_t id)
@@ -232,7 +231,7 @@ static void testRGB3(void)
 
 static void testImages(void)
 {
-	//lcd_cls();
+	if (playerThread) return;
 
 	uint32_t k=halGetCounterValue();
 
@@ -340,7 +339,7 @@ uint8_t getkey(void)
 	return key;
 }
 
-static WORKING_AREA(waThread1, 1024);
+static WORKING_AREA(waThread1, 2048);
 
 void mainEventHandler(uint8_t evt)
 {
