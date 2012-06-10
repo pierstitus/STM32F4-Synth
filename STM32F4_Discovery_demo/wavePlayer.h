@@ -48,4 +48,6 @@ typedef struct _wavfile {
 	uint16_t numBits;
 } WAVFILE;
 
+extern Thread* playerThread;
+
 #endif /* WAVEPLAYER_H_ */

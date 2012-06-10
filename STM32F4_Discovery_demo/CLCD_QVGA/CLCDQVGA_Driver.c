@@ -399,6 +399,7 @@ void lcd_puts(char* c)
 void tsc_init(void)
 {
 	palSetPadMode(GPIOC, 5, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
+	tsc_read(0x90);
 }
 
 uint16_t tsc_read(uint8_t addr)

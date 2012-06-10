@@ -9,16 +9,10 @@
 
 #include "chprintf.h"
 
-/*
- * HW Ready Reference (STM32F4Discovery)
- *
- * CS43L22 Connected to I2C1
- *
- */
-
 const stm32_dma_stream_t* i2sdma;
 static uint32_t i2stxdmamode=0;
 
+extern Thread* playerThread;
 
 static const I2CConfig i2cfg = {
     OPMODE_I2C,
@@ -79,6 +73,12 @@ void codec_hw_reset(void)
 	palSetPad(GPIOD, GPIOD_RESET);
 }
 
+static void dma_i2s_interrupt(void* dat, uint32_t flags)
+{
+	dmaStreamDisable(i2sdma);
+	chEvtSignalFlagsI(playerThread, 1);
+}
+
 static void codec_dma_init(void)
 {
 	i2sdma=STM32_DMA_STREAM(STM32_SPI_SPI3_TX_DMA_STREAM);
@@ -88,12 +88,13 @@ static void codec_dma_init(void)
 					STM32_DMA_CR_DIR_M2P |
 					STM32_DMA_CR_DMEIE |
 					STM32_DMA_CR_TEIE |
+					STM32_DMA_CR_TCIE |
 					STM32_DMA_CR_PSIZE_HWORD | STM32_DMA_CR_MSIZE_HWORD;
 
 	bool_t b = dmaStreamAllocate(i2sdma,
 			STM32_SPI_SPI3_IRQ_PRIORITY,
-			(stm32_dmaisr_t)NULL,
-			(void *)0);
+			(stm32_dmaisr_t)dma_i2s_interrupt,
+			(void *)&SPID3);
 
 	if (!b)
 		chprintf((BaseChannel*)&SD2, "DMA Allocated Successfully to I2S3\r\n");
@@ -204,15 +205,6 @@ void codec_selectAudioSource(uint8_t src)
 	}
 }
 
-extern Thread* playerThread;
-
-void dma_i2s_interrupt(void* dat, uint32_t flags)
-{
-	dat;
-	dmaStreamDisable(i2sdma);
-	chEvtSignalFlagsI(playerThread, 1);
-}
-
 // Send data to the codec via I2S
 void codec_audio_send(void* txbuf, size_t n)
 {
@@ -221,3 +213,19 @@ void codec_audio_send(void* txbuf, size_t n)
 	dmaStreamSetMode(i2sdma, i2stxdmamode | STM32_DMA_CR_MINC | STM32_DMA_CR_EN);
 }
 
+void codec_pauseResumePlayback(uint8_t pause)
+{
+	if (pause) {
+		codec_muteCtl(1);
+		codec_pwrCtl(0);
+
+		CODEC_I2S->CR2=0;
+
+	} else {
+		codec_pwrCtl(1);
+
+		CODEC_I2S->CR2=SPI_CR2_TXDMAEN;
+
+		codec_muteCtl(0);
+	}
+}

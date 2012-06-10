@@ -1,5 +1,5 @@
 *****************************************************************************
-** ChibiOS/RT port for ARM-Cortex-M4 STM32F407.                            **
+** STM32F4 Discovery GLCD UI WavePlayer Demo                               **
 *****************************************************************************
 
 ** TARGET **
@@ -8,24 +8,24 @@ The demo runs on an ST STM32F4-Discovery board.
 
 ** The Demo **
 
-The demo shows how to use the ADC, PWM and SPI drivers using asynchronous
-APIs. The ADC samples two channels (temperature sensor and PC1) and modulates
-the PWM using the sampled values. The sample data is also transmitted using
-the SPI port 2 (NSS=PB12, SCK=PB13, MISO=PB14, MOSI=PB15).
-By pressing the button located on the board the test procedure is activated
-with output on the serial port SD2 (USART2).
+The demo shows how to use a 2.4" LCD with the STM32F4-Discovery board. Also
+included is a small GUI Library I implemented using the touch panel.
 
-** Build Procedure **
-
-The demo has been tested by using the free Codesourcery GCC-based toolchain
-and YAGARTO. just modify the TRGT line in the makefile in order to use
-different GCC toolchains.
+Demo Applications called by menus include:
+ - 3 RGB Test Patterns
+ - A simple 'doodle application' - that lets you draw on the screen
+ - Wave Player
+ 
+The end result of my exercise will be to design a full-fledged mp3 audio player
+with all bells and whistles!
 
 ** Notes **
 
-Some files used by the demo are not part of ChibiOS/RT but are copyright of
-ST Microelectronics and are licensed under a different license.
-Also note that not all the files present in the ST library are distribited
-with ChibiOS/RT, you can find the whole library on the ST web site:
+This code runs on ChibiOS 2.4.1
 
-                             http://www.st.com
+The UI code as a whole, is based on the UI framework provided on
+this website: http://reifel.org/PICUserInterface/ . It was actually the
+first piece of code from where I learnt UI fundamentals, like event handler
+mechanism.
+
+It also uses Chan's xprintf library.

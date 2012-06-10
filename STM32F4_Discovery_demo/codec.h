@@ -45,4 +45,6 @@ extern void codec_i2s_init(uint16_t sampleRate, uint8_t nBits);
 
 extern void codec_audio_send(void* txbuf, size_t n);
 
+extern void codec_pauseResumePlayback(uint8_t pause);
+
 #endif /* CODEC_H_ */

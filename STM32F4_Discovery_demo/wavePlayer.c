@@ -10,7 +10,7 @@
 static WORKING_AREA(waThread3, 1024);
 
 extern uint8_t buf[];
-extern uint8_t buf2[];
+uint8_t buf2[2048];
 
 uint32_t waveSampleLength=0, bytesToPlay;
 
@@ -20,20 +20,55 @@ FIL f1;
 
 extern stm32_dma_stream_t* i2sdma;
 
+uint16_t vol=200;
+
+uint8_t pause=0;
+
 static void wavePlayEventHandler(uint8_t evt)
 {
-	if (evt && evt < 11)
+	switch (evt)
 	{
-		lcd_cls();
-		ui_displayPreviousMenu();
+		case BTN_RIGHT:
+			lcd_cls();
+			ui_displayPreviousMenu();
+			break;
+
+		case BTN_LEFT:
+			chThdTerminate(playerThread);
+			chThdWait(playerThread);
+			playerThread=NULL;
+			break;
+
+		case BTN_MID_DOWN:
+			vol--;
+			if (vol < 150) vol=150;
+			codec_volCtl(vol);
+			break;
+
+		case BTN_MID_UP:
+			vol++;
+			if (vol > 220) vol=220;
+			codec_volCtl(vol);
+			break;
+
+		case BTN_MID_SEL:
+			if (!pause) {
+				pause=1;
+				ui_drawBottomBar("Stop", "Play", "Exit");
+			} else {
+				pause=0;
+				ui_drawBottomBar("Stop", "Pause", "Exit");
+			}
+			codec_pauseResumePlayback(pause);
+			break;
 	}
 }
 
-static msg_t Thread2(void *arg) {
+static msg_t wavePlayerThread(void *arg) {
 	(void)arg;
 	chRegSetThreadName("blinker");
 
-	UINT temp, flag=0, pause=0;
+	UINT temp, bufSwitch=0;
 
 	f_read(&f1, buf2, 2048, &temp);
 	bytesToPlay-=temp;
@@ -41,74 +76,41 @@ static msg_t Thread2(void *arg) {
 	codec_pwrCtl(1);
 	codec_muteCtl(0);
 
-	uint16_t vol=200;
+	chEvtAddFlags(1);
 
 	while(bytesToPlay)
 	{
-		if (!pause)
+		chEvtWaitOne(1);
+		if (bufSwitch)
 		{
-			dmaWaitCompletion(i2sdma);
-			if (flag)
-			{
-				codec_audio_send(buf, temp/2);
-				f_read(&f1, buf2, 2048, &temp);
-				flag=0;
-			}
-			else
-			{
-				codec_audio_send(buf2, temp/2);
-				f_read(&f1, buf, 2048, &temp);
-				flag=1;
-			}
+			codec_audio_send(buf, temp/2);
+			spiAcquireBus(&SPID1);
+			f_read(&f1, buf2, 2048, &temp);
+			spiReleaseBus(&SPID1);
+			bufSwitch=0;
+		}
+		else
+		{
+			codec_audio_send(buf2, temp/2);
+			spiAcquireBus(&SPID1);
+			f_read(&f1, buf, 2048, &temp);
+			spiReleaseBus(&SPID1);
+			bufSwitch=1;
+		}
+		bytesToPlay-=temp;
 
-			bytesToPlay-=temp;
-		}
-
-		key=getkey();
-
-		if (key==BTN_MID_DOWN) {
-			vol--;
-			if (vol < 150) vol=150;
-			codec_volCtl(vol);
-		}
-		else if (key==BTN_MID_UP) {
-			vol++;
-			if (vol > 220) vol=220;
-			codec_volCtl(vol);
-		}
-		else if (key==BTN_MID_SEL) {
-			if (!pause)
-			{
-				pause=1;
-				codec_muteCtl(1);
-				CODEC_I2S->CR2=0;
-				dmaStreamDisable(i2sdma);
-
-				chThdSleepMilliseconds(20);
-			}
-			else
-			{
-				pause=0;
-				CODEC_I2S->CR2=SPI_CR2_TXDMAEN;
-				dmaStreamEnable(i2sdma);
-				codec_muteCtl(0);
-				chThdSleepMilliseconds(20);
-			}
-		}
-		else if (key==BTN_RIGHT) {
-			break;
-		}
+		if (chThdShouldTerminate()) break;
 	}
 
 	codec_muteCtl(1);
 	codec_pwrCtl(0);
 
+	playerThread=NULL;
+
 	f_close(&f1);
 
 	return 0;
 }
-
-
 
 void playWaveFile(void)
 {
@@ -121,9 +123,15 @@ void playWaveFile(void)
 
 	ui_clearUserArea();
 	ui_drawTitleBar("Play Wave File");
+	ui_drawBottomBar("Stop", pause?"Play":"Pause", "Exit");
 	ui_sethandler((pfn)wavePlayEventHandler);
 
 	cx=3; cy=UI_TBARHEIGHT+3;
+
+	if (playerThread) {
+		lcd_puts("File Already Playing!");
+		return;
+	}
 
 	st=f_open(&f1, "audio.wav", FA_READ);
 
@@ -162,6 +170,7 @@ void playWaveFile(void)
 
 		cnt=0;
 		temp=READ_UINT32(&buf[44+cnt]);
+
 		// Tag Reading Supported only on Audacity Output
 		if (temp==WAVE_META_INFO)
 		{
@@ -223,7 +232,5 @@ void playWaveFile(void)
 
 	f_lseek(&f1, offset);
 
-	playerThread=chThdCreateStatic(waThread3, sizeof(waThread3), NORMALPRIO, Thread2, NULL);
-	chThdWait(playerThread);
-	ui_executecmd(BTN_RIGHT);
+	playerThread=chThdCreateStatic(waThread3, sizeof(waThread3), NORMALPRIO+2, wavePlayerThread, NULL);
 }
