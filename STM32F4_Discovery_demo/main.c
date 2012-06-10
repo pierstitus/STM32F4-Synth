@@ -252,27 +252,36 @@ static void displayAboutScreen(void)
 {
 	ui_clearUserArea();
 
-	ui_drawTitleBar("About MyMP3");
+	ui_drawTitleBar("About Application");
 	ui_drawBottomBar(NULL, "Touch To Exit", NULL);
 
 	cx=3; cy=UI_TBARHEIGHT+3;
 
 	font=font_Larger;
-	lcd_puts("MyMP3 Player\n");
+	lcd_puts("STM32F4Discovery GUI Demo\n");
 
 	font=font_MediumBold;
+	cy+=7;
+
+	lcd_puts("A demo of a GUI library, drawing \n");
+	lcd_puts("application and a wave player.\n");
+
 	cy+=7;
 	lcd_puts("Compiled On: "__DATE__", "__TIME__"\n");
 	lcd_puts("Compiler: "CH_COMPILER_NAME"\n");
 	lcd_puts("Platform: STM32F4DISCOVERY\n");
-	xprintf("Device ID:%lX", *((uint32_t*)0xE0042000));
+	xprintf("Device ID:%lX\n", *((uint32_t*)0xE0042000));
+
+	cy+=7;
+	lcd_puts("Powered by ChibiOS\n");
+	lcd_puts("Kernel Version:"CH_KERNEL_VERSION);
 
 	ui_sethandler((pfn)testEventHandler);
 }
 #endif
 
 // Application Title
-const char appTitle[]="MyMP3 Player";
+const char appTitle[]="STM32F4D-ChibiOS LCD GUI Demo";
 Thread* mainThread;
 
 // Display the title and bottom area

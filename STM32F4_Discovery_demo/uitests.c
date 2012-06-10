@@ -4,6 +4,9 @@
  *  Created on: Jun 2, 2012
  *      Author: Kumar Abhishek
  */
+
+// This file is currently not used.
+
 #include "ch.h"
 #include "hal.h"
 
@@ -63,6 +66,7 @@ void translate(uint16_t* x, uint16_t* y)
 //
 //}
 
+// Three point calibration
 void tsc_calibration(void)
 {
 	uint16_t x1,y1,x2,y2,x3,y3;
