@@ -67,9 +67,6 @@ static SPIConfig ls_spicfg = {NULL, GPIOC, 4, SPI_CR1_BR_2 | SPI_CR1_BR_1 };
 static bool_t mmc_is_inserted(void) { return TRUE; }
 static bool_t mmc_is_protected(void) {return FALSE; }
 
-// Scrap Buffer
-uint8_t buf[2048];
-
 // MMC Card Insertion Event Handler
 static void InsertHandler(eventid_t id)
 {
@@ -121,9 +118,18 @@ void display_image(char* fn, uint16_t x, uint16_t y)
 	uint16_t w,h,sz;
 	UINT dmy, i;
 
+	uint8_t* buffer;
+
+	buffer=chHeapAlloc(NULL, 16384);
+
 	s=f_open(&fil, fn, FA_READ);
 
 	cx=3; cy=3;
+
+	if (!buffer) {
+		lcd_puts("Buffer allocation failed");
+		return;
+	}
 
 	if (s==FR_NO_FILE) 	{
 		lcd_puts("File does not exist.");
@@ -134,13 +140,13 @@ void display_image(char* fn, uint16_t x, uint16_t y)
 		return;
 	}
 
-	f_read(&fil, buf, 8, &dmy);
+	f_read(&fil, buffer, 8, &dmy);
 
-	s=buf[0];
+	s=buffer[0];
 	if (s != 0x01) return;
 
-	w=*((uint16_t*)&buf[4]);
-	h=*((uint16_t*)&buf[6]);
+	w=*((uint16_t*)&buffer[4]);
+	h=*((uint16_t*)&buffer[6]);
 
 	sz=504;
 
@@ -152,24 +158,27 @@ void display_image(char* fn, uint16_t x, uint16_t y)
 
 	do
 	{
-		f_read(&fil, buf, sz, &dmy);
+		spiAcquireBus(&SPID1);
+		f_read(&fil, buffer, sz, &dmy);
+		spiReleaseBus(&SPID1);
 
-		for (i=0;i<dmy;i++)
+		for (i=0;i<dmy;i+=2)
 		{
-			uint16_t x=buf[i++];
-			x=(x<<8)|buf[i];
+			uint16_t x=__REV16(*((uint16_t*)&buffer[i]));
 			lcd_lld_write(x);
 		}
 
 		if (dmy<sz) break;
 
-		sz=2048;
+		sz=16384;
 	} while (1);
 
 	palSetPad(LCD_CS_GPIO, LCD_CS_PIN);
 
 	lcd_setrect(0, 239, 0, 319);
 	lcd_locate(0,0);
+
+	chHeapFree(buffer);
 
 	// Close file and return
 	f_close(&fil);
@@ -348,8 +357,6 @@ uint8_t getkey(void)
 	return key;
 }
 
-static WORKING_AREA(waThread1, 2048);
-
 void mainEventHandler(uint8_t evt)
 {
 	int8_t x, y, z;
@@ -461,7 +468,7 @@ int main(void)
 	chEvtDispatch(evhndl, chEvtWaitOne(ALL_EVENTS));
 #endif
 
-	chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
+	chThdCreateFromHeap(NULL, 1024, NORMALPRIO, Thread1, NULL);
 
 	lcd_gotoxy(3, 30);
 	lcd_puts("Hello, world");
