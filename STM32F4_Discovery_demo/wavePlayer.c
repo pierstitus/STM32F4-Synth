@@ -9,8 +9,10 @@
 
 static WORKING_AREA(waThread3, 1024);
 
-extern uint8_t buf[];
-uint8_t buf2[2048];
+#define PLAYBACK_BUFFER_SIZE	512
+
+uint8_t buf[PLAYBACK_BUFFER_SIZE];
+uint8_t buf2[PLAYBACK_BUFFER_SIZE];
 
 uint32_t waveSampleLength=0, bytesToPlay;
 
@@ -26,6 +28,14 @@ uint8_t pause=0;
 
 static void wavePlayEventHandler(uint8_t evt)
 {
+	static uint8_t prevEvt=0;
+
+	if (evt && evt < 15)
+		if (prevEvt!=evt) {
+			prevEvt=evt;
+			codec_sendBeep();
+		}
+
 	switch (evt)
 	{
 		case BTN_RIGHT:
@@ -70,7 +80,7 @@ static msg_t wavePlayerThread(void *arg) {
 
 	UINT temp, bufSwitch=0;
 
-	f_read(&f1, buf2, 2048, &temp);
+	f_read(&f1, buf2, PLAYBACK_BUFFER_SIZE, &temp);
 	bytesToPlay-=temp;
 
 	codec_pwrCtl(1);
@@ -85,7 +95,7 @@ static msg_t wavePlayerThread(void *arg) {
 		{
 			codec_audio_send(buf, temp/2);
 			spiAcquireBus(&SPID1);
-			f_read(&f1, buf2, 2048, &temp);
+			f_read(&f1, buf2, PLAYBACK_BUFFER_SIZE, &temp);
 			spiReleaseBus(&SPID1);
 			bufSwitch=0;
 		}
@@ -93,7 +103,7 @@ static msg_t wavePlayerThread(void *arg) {
 		{
 			codec_audio_send(buf2, temp/2);
 			spiAcquireBus(&SPID1);
-			f_read(&f1, buf, 2048, &temp);
+			f_read(&f1, buf, PLAYBACK_BUFFER_SIZE, &temp);
 			spiReleaseBus(&SPID1);
 			bufSwitch=1;
 		}
