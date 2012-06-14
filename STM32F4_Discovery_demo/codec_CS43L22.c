@@ -64,6 +64,8 @@ void codec_hw_init(void)
 
 	// Disable the limiter attack level
 	codec_writeReg(0x27, 0x00);
+
+	codec_writeReg(0x1C, 0x80);
 }
 
 void codec_hw_reset(void)
@@ -228,4 +230,10 @@ void codec_pauseResumePlayback(uint8_t pause)
 
 		codec_muteCtl(0);
 	}
+}
+
+void codec_sendBeep(void)
+{
+	codec_writeReg(0x1E, 0x00);
+	codec_writeReg(0x1E, 0x40);
 }

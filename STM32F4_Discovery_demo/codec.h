@@ -39,6 +39,8 @@ extern void codec_pwrCtl(uint8_t pwr);
 
 extern void codec_muteCtl(uint8_t mute);
 
+extern void codec_sendBeep(void);
+
 extern void codec_selectAudioSource(uint8_t src);
 
 extern void codec_i2s_init(uint16_t sampleRate, uint8_t nBits);
