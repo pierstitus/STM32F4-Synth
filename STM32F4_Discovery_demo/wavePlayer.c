@@ -11,8 +11,8 @@ static WORKING_AREA(waThread3, 1024);
 
 #define PLAYBACK_BUFFER_SIZE	512
 
-uint8_t buf[PLAYBACK_BUFFER_SIZE];
-uint8_t buf2[PLAYBACK_BUFFER_SIZE];
+uint8_t buf[PLAYBACK_BUFFER_SIZE]={0};
+uint8_t buf2[PLAYBACK_BUFFER_SIZE]={0};
 
 uint32_t waveSampleLength=0, bytesToPlay;
 
@@ -78,19 +78,20 @@ static msg_t wavePlayerThread(void *arg) {
 	(void)arg;
 	chRegSetThreadName("blinker");
 
-	UINT temp, bufSwitch=0;
-
-	f_read(&f1, buf2, PLAYBACK_BUFFER_SIZE, &temp);
-	bytesToPlay-=temp;
+	UINT temp, bufSwitch=1;
 
 	codec_pwrCtl(1);
 	codec_muteCtl(0);
+
+	f_read(&f1, buf, PLAYBACK_BUFFER_SIZE, &temp);
+	bytesToPlay-=temp;
 
 	chEvtAddFlags(1);
 
 	while(bytesToPlay)
 	{
 		chEvtWaitOne(1);
+
 		if (bufSwitch)
 		{
 			codec_audio_send(buf, temp/2);
@@ -107,6 +108,7 @@ static msg_t wavePlayerThread(void *arg) {
 			spiReleaseBus(&SPID1);
 			bufSwitch=1;
 		}
+
 		bytesToPlay-=temp;
 
 		if (chThdShouldTerminate()) break;

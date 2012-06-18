@@ -78,7 +78,10 @@ void codec_hw_reset(void)
 static void dma_i2s_interrupt(void* dat, uint32_t flags)
 {
 	dmaStreamDisable(i2sdma);
+
+	chSysLockFromIsr();
 	chEvtSignalFlagsI(playerThread, 1);
+	chSysUnlockFromIsr();
 }
 
 static void codec_dma_init(void)
@@ -212,6 +215,7 @@ void codec_audio_send(void* txbuf, size_t n)
 {
 	dmaStreamSetMemory0(i2sdma, txbuf);
 	dmaStreamSetTransactionSize(i2sdma, n);
+	dmaStreamClearInterrupt(i2sdma);
 	dmaStreamSetMode(i2sdma, i2stxdmamode | STM32_DMA_CR_MINC | STM32_DMA_CR_EN);
 }
 
