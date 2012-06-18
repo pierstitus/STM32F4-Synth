@@ -29,6 +29,9 @@ void startDrawingThread(void)
 }
 
 // Drawing Thread
+
+#define NUM_CONVERSIONS	4
+
 static msg_t DrawingThread(void *arg)
 {
 	(void)arg;
@@ -63,7 +66,7 @@ static msg_t DrawingThread(void *arg)
 				// Check if color toolbar is hit
 				if (py > UI_TBARHEIGHT+2 && py < 50)
 				{
-					int t=(px-3)/22;
+					int t=(px-4)/22;
 					if (t<7)
 					{
 						lcd_filledrect(colors[fg], 10+fg*22, UI_TBARHEIGHT+10, 4, 4);
@@ -80,9 +83,9 @@ static msg_t DrawingThread(void *arg)
 				}
 
 				// If within boundary, plot the point
-				if (py > 50 && py < 285) {
-					if (i>3) {
-						lcd_filledrect(colors[fg], dx/4, dy/4, 2, 2);
+				if (py > 50 && py < 285 && px > 2 && px < 315) {
+					if (i==NUM_CONVERSIONS) {
+						lcd_filledrect(colors[fg], dx/NUM_CONVERSIONS, dy/NUM_CONVERSIONS, 2, 2);
 						i=dx=dy=0;
 					} else {
 						dx+=px;

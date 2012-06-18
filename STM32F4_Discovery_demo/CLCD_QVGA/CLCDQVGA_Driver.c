@@ -399,7 +399,7 @@ void lcd_puts(char* c)
 void tsc_init(void)
 {
 	palSetPadMode(GPIOC, 5, PAL_MODE_OUTPUT_PUSHPULL | PAL_STM32_OSPEED_HIGHEST);
-	tsc_read(0x90);
+	tsc_read(0xD0);
 }
 
 uint16_t tsc_read(uint8_t addr)
@@ -412,7 +412,7 @@ uint16_t tsc_read(uint8_t addr)
 	spiAcquireBus(&SPID1);
 
 	SPI1->CR1&=~SPI_CR1_SPE;
-	SPI1->CR1|=SPI_CR1_BR_1|SPI_CR1_BR_0;
+	SPI1->CR1|=(SPI_CR1_BR_2);
 	SPI1->CR1|=SPI_CR1_SPE;
 
 	palClearPad(GPIOC, 5);
@@ -424,10 +424,11 @@ uint16_t tsc_read(uint8_t addr)
 	result=(rxbuf[1]<<8) | rxbuf[2];
 
 	SPI1->CR1&=~SPI_CR1_SPE;
-	SPI1->CR1&=~(SPI_CR1_BR_1|SPI_CR1_BR_0);
+	SPI1->CR1&=~(SPI_CR1_BR_2);
 	SPI1->CR1|=SPI_CR1_SPE;
 
 	spiReleaseBus(&SPID1);
+
 	result>>=3;
 	return result;
 }
@@ -436,15 +437,16 @@ int lcd_getpointraw(uint16_t* _x, uint16_t* _y)
 {
 	uint16_t x[7], y[7];
 
-	tsc_read(0xD2);
-	tsc_read(0x92);
+	tsc_read(0xD1);
+	for (int i=0;i<7;i++)
+		x[i]=tsc_read(0xD1);
+
+	tsc_read(0x91);
 
 	for (int i=0;i<7;i++)
-	{
-		x[i]=tsc_read(0xD2);
-		y[i]=tsc_read(0x92);
-	}
-	tsc_read(0x90);
+		y[i]=tsc_read(0x91);
+
+	tsc_read(0xD0);
 
 	for (int i=0; i<6; i++)
 	{
