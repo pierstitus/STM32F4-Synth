@@ -58,7 +58,7 @@ const menuItem subMenu1[]= {
 };
 
 // MMC Card Code
-static SPIConfig hs_spicfg = {NULL, GPIOC, 4, SPI_CR1_BR_0 };
+static SPIConfig hs_spicfg = {NULL, GPIOC, 4, SPI_CR1_BR_0};
 #ifdef USE_MMC_CARD
 // High Speed and Low Speed Configuration
 static SPIConfig ls_spicfg = {NULL, GPIOC, 4, SPI_CR1_BR_2 | SPI_CR1_BR_1 };
@@ -109,9 +109,97 @@ static void RemoveHandler(eventid_t id)
 	fs_ready = FALSE;
 }
 
-// Display an image from the SD Card
-void display_image(char* fn, uint16_t x, uint16_t y)
+// Display a bitmap image from the SD Card
+void display_bitmap(char* fn, uint16_t x, uint16_t y)
 {
+	FIL fil;
+
+	uint16_t s;
+	uint16_t w,h,sz;
+	UINT dmy, i;
+
+	uint8_t* buffer;
+
+	buffer=chHeapAlloc(NULL, 16384);
+
+	s=f_open(&fil, fn, FA_READ);
+
+	cx=3; cy=3;
+
+	if (!buffer) {
+		lcd_puts("Buffer allocation failed");
+		return;
+	}
+
+	if (s==FR_NO_FILE) 	{
+		lcd_puts("File does not exist.");
+		return;
+	}
+	else if (s==FR_NOT_READY) {
+		lcd_puts("Card not Inserted.");
+		return;
+	}
+
+	// Read the header first
+	f_read(&fil, buffer, 54, &dmy);
+
+	s=*((uint16_t*)&buffer[0]);
+
+	// Support only 24bpp bitmap
+	if (s != 0x4D42 || buffer[28] != 24) {
+		lcd_puts("Not a valid bitmap!");
+		return;
+	}
+
+	w=*((uint16_t*)&buffer[18]);
+	h=*((uint16_t*)&buffer[22]);
+
+	sz=16384-54;
+
+	lcd_setrect(x, x+w-1, y, y+h-1);
+	lcd_writereg(0x03, 0x01);
+
+	lcd_locate(x,y+h-1);
+
+	lcd_cmd(0x22);
+
+	palClearPad(LCD_CS_GPIO, LCD_CS_PIN);
+
+	uint8_t clr[3], cnt=0;
+	do
+	{
+		f_read(&fil, buffer, sz, &dmy);
+
+		for (i=0;i<dmy;i++)
+		{
+			clr[cnt++]=buffer[i];
+			if (cnt==3) {
+				uint16_t index=(uint16_t)( (( clr[2] >> 3 ) << 11 ) | (( clr[1] >> 2 ) << 5  ) | ( clr[0]  >> 3 ));
+
+				lcd_lld_write(index);
+				cnt=0;
+			}
+		}
+
+		if (dmy<sz) break;
+
+		sz=16384;
+	} while (1);
+
+	palSetPad(LCD_CS_GPIO, LCD_CS_PIN);
+
+	lcd_setrect(0, 239, 0, 319);
+	lcd_locate(0,0);
+
+	chHeapFree(buffer);
+
+	// Close file and return
+	f_close(&fil);
+}
+
+
+
+void display_image(char* fn, uint16_t x, uint16_t y) {
 	FIL fil;
 
 	uint8_t s;
@@ -183,6 +271,7 @@ void display_image(char* fn, uint16_t x, uint16_t y)
 	// Close file and return
 	f_close(&fil);
 }
+
 #endif
 
 // Test Code
@@ -244,7 +333,8 @@ static void testImages(void)
 
 	uint32_t k=halGetCounterValue();
 
-	display_image("newImage.raw", 0, 0);
+	//display_image("newImage.raw", 0, 0);
+	display_bitmap("newImage.bmp", 0, 0);
 
 	k=halGetCounterValue()-k;
 
