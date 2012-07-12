@@ -215,8 +215,9 @@ void codec_audio_send(void* txbuf, size_t n)
 {
 	dmaStreamSetMemory0(i2sdma, txbuf);
 	dmaStreamSetTransactionSize(i2sdma, n);
+	dmaStreamSetMode(i2sdma, i2stxdmamode | STM32_DMA_CR_MINC);
 	dmaStreamClearInterrupt(i2sdma);
-	dmaStreamSetMode(i2sdma, i2stxdmamode | STM32_DMA_CR_MINC | STM32_DMA_CR_EN);
+	dmaStreamEnable(i2sdma);
 }
 
 void codec_pauseResumePlayback(uint8_t pause)
