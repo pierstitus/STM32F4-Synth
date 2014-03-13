@@ -64,13 +64,12 @@ endif
 PROJECT = STM32F4_Discovery_demo
 
 # Imported source files and paths
-CHIBIOS = D:\ChibiOS_2.4.1
+CHIBIOS = ../../ChibiOS
 include $(CHIBIOS)/boards/ST_STM32F4_DISCOVERY/board.mk
 include $(CHIBIOS)/os/hal/platforms/STM32F4xx/platform.mk
 include $(CHIBIOS)/os/hal/hal.mk
 include $(CHIBIOS)/os/ports/GCC/ARMCMx/STM32F4xx/port.mk
 include $(CHIBIOS)/os/kernel/kernel.mk
-include $(CHIBIOS)/ext/fatfs/fatfs.mk
 
 # Define linker script file here
 LDSCRIPT= $(PORTLD)/STM32F407xG.ld
@@ -84,20 +83,11 @@ CSRC = $(PORTSRC) \
        $(HALSRC) \
        $(PLATFORMSRC) \
        $(BOARDSRC) \
-       $(FATFSSRC) \
        $(CHIBIOS)/os/various/lis302dl.c \
        $(CHIBIOS)/os/various/chprintf.c \
        $(CHIBIOS)/os/various/syscalls.c \
        main.c		\
-       xprintf.c	\
-       drawingApp.c \
        codec_CS43L22.c \
-       wavePlayer.c	   \
-       CLCD_QVGA/CLCDQVGA_Driver.c \
-       CLCD_QVGA/fonts.c			\
-       CLCD_QVGA/keys.c			\
-       CLCD_QVGA/UI.c			
-       
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
@@ -128,7 +118,6 @@ ASMSRC = $(PORTASM)
 
 INCDIR = $(PORTINC) $(KERNINC) \
          $(HALINC) $(PLATFORMINC) $(BOARDINC) \
-         $(FATFSINC)			\
          $(CHIBIOS)/os/various	\
         
 
@@ -207,7 +196,7 @@ UDEFS =
 UADEFS =
 
 # List all user directories here
-UINCDIR = ./CLCD_QVGA
+UINCDIR =
 
 # List the user directory to look for the libraries here
 ULIBDIR =
