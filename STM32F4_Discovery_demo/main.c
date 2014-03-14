@@ -14,9 +14,53 @@ Thread* playerThread;
 const char appTitle[]="STM32F4D-ChibiOS Audio Demo";
 Thread* mainThread;
 
+#define PLAYBACK_BUFFER_SIZE	256
+int16_t buf[PLAYBACK_BUFFER_SIZE]={-16000};
+int16_t buf2[PLAYBACK_BUFFER_SIZE]={16000};
+
+static WORKING_AREA(waThread2, 256);
+static msg_t synthThread(void *arg) {  // THE SYNTH THREAD
+	(void)arg;
+	chRegSetThreadName("SYNTH");
+
+	uint8_t bufSwitch=1;
+
+	codec_pwrCtl(1);    // POWER ON
+	codec_muteCtl(0);   // MUTE OFF
+
+	chEvtAddFlags(1);
+
+	while(1)
+	{
+		chEvtWaitOne(1);
+
+		if (bufSwitch)
+		{
+			codec_audio_send(buf, PLAYBACK_BUFFER_SIZE);
+			bufSwitch=0;
+		}
+		else
+		{
+			codec_audio_send(buf2, PLAYBACK_BUFFER_SIZE);
+			bufSwitch=1;
+		}
+
+		if (chThdShouldTerminate()) break;
+	}
+
+	codec_muteCtl(1);
+	codec_pwrCtl(0);
+
+	playerThread=NULL;
+	palTogglePad(GPIOD, GPIOD_LED5);
+
+	return 0;
+}
+
+
 /*
  * This is a periodic thread that does absolutely nothing except flashing
- * a LED.
+ * a LED and beeping.
  */
 static WORKING_AREA(waThread1, 128);
 __attribute__  ((noreturn))
@@ -24,10 +68,6 @@ static msg_t Thread1(void *arg) {
 	(void)arg;
 	chRegSetThreadName("blinker");
 
-	codec_i2s_init(44100, 16);
-
-	codec_pwrCtl(1);    // POWER ON
-	codec_muteCtl(0);   // MUTE OFF
 	while (TRUE)
 	{
 		palSetPad(GPIOD, GPIOD_LED3);       /* Orange.  */
@@ -68,8 +108,10 @@ int main(void)
 
 	hw_init();
 
-	//chThdCreateFromHeap(NULL, 1024, NORMALPRIO, Thread1, NULL);
-	playerThread=chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
+	codec_i2s_init(44100, 16);
+
+	playerThread=chThdCreateStatic(waThread2, sizeof(waThread2), NORMALPRIO, synthThread, NULL);
+	chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
 
 	chVTSetI(&vt1, 500, led_toggle, NULL);
 
