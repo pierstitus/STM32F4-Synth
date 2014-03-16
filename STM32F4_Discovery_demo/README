@@ -1,64 +1,8 @@
-*****************************************************************************
-** STM32F4 Discovery GLCD UI WavePlayer Demo                               **
-*****************************************************************************
+==============================
+ STM32F4 Discovery Audio Demo
+==============================
 
-The demo shows how to use a 2.4" LCD with the STM32F4-Discovery board. Also
-included is a small GUI Library I implemented using the touch panel.
+This code runs on ChibiOS 2.6.3
 
-Demo Applications called by menus include:
- - 3 RGB Test Patterns
- - A simple 'doodle application' - that lets you draw on the screen
- - Wave Player
- 
-The end result of my exercise will be to design a full-fledged mp3 audio player
-with all bells and whistles!
-
-NOTES:
-
-The LCD I use is this one:
-http://www.ebay.com/itm/2-4-TFT-LCD-Module-Display-Touch-Panel-PCB-adapter-/190477028273?pt=LH_DefaultDomain_0&hash=item2c5950cbb1
-
-It uses a 'new' S6D1121 controller, unlike the earlier ILI9325 variant.
-
-You will have to close jumper J3 (IM0) on the back of module PCB to enable 16-bit mode.
-
-The LCD is bitbanged and connected to the following pins:
-
-CS			PD7
-RST			PD10
-RS			PD11
-WR			PD8
-RD			PD9
-
-DB[0:3]		PD[0:3]
-DB[4:15]	PE[4:15]
-
-This code runs on ChibiOS 2.4.1
-
-The UI & Text Rendering code of my library is based on the UI framework provided on this 
-website: http://reifel.org/PICUserInterface/ . I wrote it two years ago for
-my AVR development platform.
-
-It also uses Chan's xprintf library.
-
-I wrote my own implementation for controlling the onboard CS43L22 DAC and sending data to it via DMA.
-
-The source files are self-explanatory.
-
-You will have to change the ChibiOS path in the makefile.
-
-For screenshots visit:
-
-http://imageshack.us/photo/my-images/844/dsc01768qf.jpg/
-http://imageshack.us/photo/my-images/818/dsc01779t.jpg/
-http://imageshack.us/photo/my-images/855/dsc01829w.jpg/
-http://imageshack.us/photo/my-images/837/dsc01775tt.jpg/
-http://imageshack.us/photo/my-images/7/image2mb.jpg/
-http://imageshack.us/photo/my-images/7/image1als.jpg/
-http://imageshack.us/photo/my-images/41/dsc01788ql.jpg/
-http://imageshack.us/photo/my-images/259/dsc01786i.jpg/
-http://imageshack.us/photo/my-images/198/dsc01784m.jpg/
-
-Cheers!
-
-Abhishek
+The code for controlling the onboard CS43L22 DAC and sending data to it via
+DMA is from the implementation by Abhishek.

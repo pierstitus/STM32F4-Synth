@@ -29,7 +29,7 @@ static msg_t synthThread(void *arg) {  // THE SYNTH THREAD
 	codec_pwrCtl(1);    // POWER ON
 	codec_muteCtl(0);   // MUTE OFF
 
-	chEvtAddFlags(1);
+	chEvtAddEvents(1);
 
 	while(1)
 	{

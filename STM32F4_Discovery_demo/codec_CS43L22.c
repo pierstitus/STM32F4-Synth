@@ -104,7 +104,7 @@ static void dma_i2s_interrupt(void* dat, uint32_t flags)
 	dmaStreamDisable(i2sdma);
 
 	chSysLockFromIsr();
-	chEvtSignalFlagsI(playerThread, 1);
+	chEvtSignalI(playerThread, 1);
 	chSysUnlockFromIsr();
 }
 
@@ -126,7 +126,7 @@ static void codec_dma_init(void)
 			(void *)&SPID3);
 
 	if (!b)
-		chprintf((BaseChannel*)&SD2, "DMA Allocated Successfully to I2S3\r\n");
+		chprintf((BaseSequentialStream*)&SD2, "DMA Allocated Successfully to I2S3\r\n");
 
 	dmaStreamSetPeripheral(i2sdma, &(SPI3->DR));
 }
@@ -148,7 +148,7 @@ void codec_i2s_init(uint16_t sampleRate, uint8_t nBits)
 	prescale=(pllfreq*10)/(256*sampleRate) + 5;
 	prescale/=10;
 
-	chprintf((BaseChannel*)&SD2, "Prescale value:%d\r\n", prescale);
+	chprintf((BaseSequentialStream*)&SD2, "Prescale value:%d\r\n", prescale);
 
 	if (prescale > 0xFF || prescale < 2) prescale=2;
 
