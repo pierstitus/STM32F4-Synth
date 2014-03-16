@@ -1,8 +1,0 @@
-==============================
- STM32F4 Discovery Audio Demo
-==============================
-
-This code runs on ChibiOS 2.6.3
-
-The code for controlling the onboard CS43L22 DAC and sending data to it via
-DMA is from the implementation by Abhishek.

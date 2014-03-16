@@ -64,7 +64,7 @@ endif
 PROJECT = STM32F4_Discovery_demo
 
 # Imported source files and paths
-CHIBIOS = ../../ChibiOS
+CHIBIOS = ../ChibiOS
 include $(CHIBIOS)/boards/ST_STM32F4_DISCOVERY/board.mk
 include $(CHIBIOS)/os/hal/platforms/STM32F4xx/platform.mk
 include $(CHIBIOS)/os/hal/hal.mk
