@@ -15,8 +15,9 @@ const char appTitle[]="STM32F4D-ChibiOS Audio Demo";
 Thread* mainThread;
 
 #define PLAYBACK_BUFFER_SIZE	256
-int16_t buf1[PLAYBACK_BUFFER_SIZE]={-16000};
-int16_t buf2[PLAYBACK_BUFFER_SIZE]={16000};
+int16_t buf1[PLAYBACK_BUFFER_SIZE]={0};
+int16_t buf2[PLAYBACK_BUFFER_SIZE]={0};
+float buf_f[PLAYBACK_BUFFER_SIZE] = {0.0};
 
 static WORKING_AREA(waThread2, 256);
 static msg_t synthThread(void *arg) {  // THE SYNTH THREAD
@@ -25,16 +26,35 @@ static msg_t synthThread(void *arg) {  // THE SYNTH THREAD
 
 	uint8_t bufSwitch=1;
 	int16_t* buf = buf1;
+	uint16_t n;
+	float tmp;
+
+	float d = 0;
+	float damp = 0.3;
+
+	buf_f[0] = 200;
 
 	codec_pwrCtl(1);    // POWER ON
 	codec_muteCtl(0);   // MUTE OFF
 
 	chEvtAddEvents(1);
 
+	// start with a square wave
+	for (n = 0; n < PLAYBACK_BUFFER_SIZE; n++)
+	{
+		buf_f[n] = (2.0*(n<128)-1.0);
+	}
+
 	while(1)
 	{
-		chEvtWaitOne(1);
+		// do Karplus Strong filtering
+		for (n = 0; n < PLAYBACK_BUFFER_SIZE; n++)
+		{
+			d = damp * buf_f[n] + (1-damp) * d;
+			buf_f[n] = d;
+		}
 
+		// double buffering
 		if (bufSwitch)
 		{
 			buf = buf1;
@@ -45,6 +65,21 @@ static msg_t synthThread(void *arg) {  // THE SYNTH THREAD
 			buf = buf2;
 			bufSwitch=1;
 		}
+		// convert float to int with scale, clamp and round
+		for (n = 0; n < PLAYBACK_BUFFER_SIZE; n++)
+		{
+			tmp = buf_f[n] * 32768;
+			tmp = (tmp <= -32768) ? -32768 : (tmp >= 32767) ? 32767 : tmp;
+			if (tmp <= -32768 || tmp >= 32767)
+			{
+				palSetPad(GPIOD, GPIOD_LED3);       /* Orange.  */
+			} else {
+				palClearPad(GPIOD, GPIOD_LED3);       /* Orange.  */
+			}
+			buf[n] = (int16_t)(tmp >= 0 ? tmp + 0.5 : tmp - 0.5);
+		}
+
+		chEvtWaitOne(1);
 		codec_audio_send(buf, PLAYBACK_BUFFER_SIZE);
 
 		if (chThdShouldTerminate()) break;
@@ -113,7 +148,7 @@ int main(void)
 	codec_i2s_init(44100, 16);
 
 	playerThread=chThdCreateStatic(waThread2, sizeof(waThread2), NORMALPRIO, synthThread, NULL);
-	chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
+	//chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
 
 	chVTSetI(&vt1, 500, led_toggle, NULL);
 
