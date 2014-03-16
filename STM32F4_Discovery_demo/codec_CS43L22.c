@@ -101,6 +101,8 @@ void codec_hw_reset(void)
 
 static void dma_i2s_interrupt(void* dat, uint32_t flags)
 {
+	(void)dat;
+	(void)flags;
 	dmaStreamDisable(i2sdma);
 
 	chSysLockFromIsr();
