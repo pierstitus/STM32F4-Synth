@@ -28,6 +28,29 @@ static uint8_t txbuf[2]={0}, rxbuf[2]={0};
 
 void codec_hw_init(void)
 {
+/*
+4.9 Recommended Power-Up Sequence
+1. Hold RESET low until the power supplies are stable.
+2. Bring RESET high.
+3. The default state of the “Power Ctl. 1” register (0x02) is 0x01. Load the desired register settings while
+keeping the “Power Ctl 1” register set to 0x01.
+4. Load the required initialization settings listed in Section 4.11.
+5. Apply MCLK at the appropriate frequency, as discussed in Section 4.6. SCLK may be applied or set to
+master at any time; LRCK may only be applied or set to master while the PDN bit is set to 1.
+6. Set the “Power Ctl 1” register (0x02) to 0x9E.
+7. Bring RESET low if the analog or digital supplies drop below the recommended operating condition to
+prevent power glitch related issues.
+
+4.11 Required Initialization Settings
+Various sections in the device must be adjusted by implementing the initialization settings shown below after
+power-up sequence step 3. All performance and power consumption measurements were taken with the
+following settings:
+1. Write 0x99 to register 0x00.
+2. Write 0x80 to register 0x47.
+3. Write ‘1’b to bit 7 in register 0x32.
+4. Write ‘0’b to bit 7 in register 0x32.
+5. Write 0x00 to register 0x00.
+*/
 	// Fortunately, all pins have already been initialized in board.h
 
 	// Start the i2c driver
@@ -45,26 +68,27 @@ void codec_hw_init(void)
 	// Auto Detect Clock, MCLK/2
 	codec_writeReg(0x05, 0x81);
 
-	// Slave Mode, I2S Data Format
+	// Slave Mode, I2S Data Format (default is Left Justified)
 	codec_writeReg(0x06, 0x04);
 
 	codec_pwrCtl(1);
 
-	codec_volCtl(200);
+	//codec_volCtl(200);
 
-	// Adjust PCM Volume
-	codec_writeReg(0x1A, 0x0A);
-	codec_writeReg(0x1B, 0x0A);
+	// Adjust PCM Volume, 0x0A * 0.5 dB = +5dB
+	//codec_writeReg(0x1A, 0x0A);
+	//codec_writeReg(0x1B, 0x0A);
 
-	// Disable the analog soft ramp
-	codec_writeReg(0x0A, 0x00);
+	// Disable the analog passthrough volume at zero crossing and soft ramp
+	//codec_writeReg(0x0A, 0x00);
 
 	// Disable the digital soft ramp
-	codec_writeReg(0x0E, 0x04);
+	//codec_writeReg(0x0E, 0x04);
 
 	// Disable the limiter attack level
-	codec_writeReg(0x27, 0x00);
+	//codec_writeReg(0x27, 0x00);
 
+	// Set beep to 1043.48 Hz = C6, ~86 ms
 	codec_writeReg(0x1C, 0x80);
 }
 
@@ -159,21 +183,25 @@ uint8_t codec_readReg(uint8_t addr)
 void codec_pwrCtl(uint8_t pwr)
 {
 	if (pwr)
-		codec_writeReg(0x02, 0x9E);
+		codec_writeReg(0x02, 0x9E); // Powered up
 	else
-		codec_writeReg(0x02, 0x01);
+		codec_writeReg(0x02, 0x01); // Powered down
 }
 
 void codec_muteCtl(uint8_t mute)
 {
 	if (mute)
-		codec_writeReg(0x04, 0xFF);
+		codec_writeReg(0x04, 0xFF); // Headphone channels are always OFF. Speaker channels are always OFF.
 	else
-		codec_writeReg(0x04, 0xAF);
+		codec_writeReg(0x04, 0xAF); // Headphone channels are always ON. Speaker channels are always OFF.
 }
 
 void codec_volCtl(uint8_t vol)
 {
+	/*
+	 * set volume from 0:-115.5 dB to 255:+12dB
+	 * Default is 231: 0dB
+	 */
 	if (vol > 0xE6)
 	{
 		codec_writeReg(0x20, vol-0xE7);

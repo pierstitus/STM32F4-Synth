@@ -15,7 +15,7 @@ const char appTitle[]="STM32F4D-ChibiOS Audio Demo";
 Thread* mainThread;
 
 #define PLAYBACK_BUFFER_SIZE	256
-int16_t buf[PLAYBACK_BUFFER_SIZE]={-16000};
+int16_t buf1[PLAYBACK_BUFFER_SIZE]={-16000};
 int16_t buf2[PLAYBACK_BUFFER_SIZE]={16000};
 
 static WORKING_AREA(waThread2, 256);
@@ -24,6 +24,7 @@ static msg_t synthThread(void *arg) {  // THE SYNTH THREAD
 	chRegSetThreadName("SYNTH");
 
 	uint8_t bufSwitch=1;
+	int16_t* buf = buf1;
 
 	codec_pwrCtl(1);    // POWER ON
 	codec_muteCtl(0);   // MUTE OFF
@@ -36,14 +37,15 @@ static msg_t synthThread(void *arg) {  // THE SYNTH THREAD
 
 		if (bufSwitch)
 		{
-			codec_audio_send(buf, PLAYBACK_BUFFER_SIZE);
+			buf = buf1;
 			bufSwitch=0;
 		}
 		else
 		{
-			codec_audio_send(buf2, PLAYBACK_BUFFER_SIZE);
+			buf = buf2;
 			bufSwitch=1;
 		}
+		codec_audio_send(buf, PLAYBACK_BUFFER_SIZE);
 
 		if (chThdShouldTerminate()) break;
 	}
