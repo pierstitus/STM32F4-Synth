@@ -224,3 +224,6 @@ ifeq ($(USE_FWLIB),yes)
 endif
 
 include $(CHIBIOS)/os/ports/GCC/ARMCMx/rules.mk
+
+prog: all
+	dfu-util -d0483:df11 -a0 -s0x8000000 -D $(BUILDDIR)/$(PROJECT).bin
