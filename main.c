@@ -24,10 +24,11 @@ static msg_t synthThread(void *arg) {  // THE SYNTH THREAD
 	(void)arg;
 	chRegSetThreadName("SYNTH");
 
-	uint8_t bufSwitch=1;
+	uint_fast8_t bufSwitch=1;
 	int16_t* buf = buf1;
-	uint16_t n;
-	float tmp;
+	int32_t tmp;
+
+	unsigned int n;
 
 	float d = 0;
 	float damp = 0.3;
@@ -68,15 +69,16 @@ static msg_t synthThread(void *arg) {  // THE SYNTH THREAD
 		// convert float to int with scale, clamp and round
 		for (n = 0; n < PLAYBACK_BUFFER_SIZE; n++)
 		{
-			tmp = buf_f[n] * 32768;
+			tmp = (int32_t)(buf_f[n] * 32768);
 			tmp = (tmp <= -32768) ? -32768 : (tmp >= 32767) ? 32767 : tmp;
+			// enable LED on clip
 			if (tmp <= -32768 || tmp >= 32767)
 			{
 				palSetPad(GPIOD, GPIOD_LED3);       /* Orange.  */
 			} else {
 				palClearPad(GPIOD, GPIOD_LED3);       /* Orange.  */
 			}
-			buf[n] = (int16_t)(tmp >= 0 ? tmp + 0.5 : tmp - 0.5);
+			buf[n] = (int16_t)tmp;
 		}
 
 		chEvtWaitOne(1);
