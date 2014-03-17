@@ -15,9 +15,10 @@ const char appTitle[]="STM32F4D-ChibiOS Audio Demo";
 Thread* mainThread;
 
 #define PLAYBACK_BUFFER_SIZE	256
+#define CHANNEL_BUFFER_SIZE		(PLAYBACK_BUFFER_SIZE/2)
 int16_t buf1[PLAYBACK_BUFFER_SIZE]={0};
 int16_t buf2[PLAYBACK_BUFFER_SIZE]={0};
-float buf_f[PLAYBACK_BUFFER_SIZE] = {0.0};
+float buf_f[CHANNEL_BUFFER_SIZE] = {0.0};
 
 static WORKING_AREA(waThread2, 256);
 static msg_t synthThread(void *arg) {  // THE SYNTH THREAD
@@ -41,15 +42,15 @@ static msg_t synthThread(void *arg) {  // THE SYNTH THREAD
 	chEvtAddEvents(1);
 
 	// start with a square wave
-	for (n = 0; n < PLAYBACK_BUFFER_SIZE; n++)
+	for (n = 0; n < CHANNEL_BUFFER_SIZE; n++)
 	{
-		buf_f[n] = (2.0*(n<128)-1.0);
+		buf_f[n] = (2.0*(n<CHANNEL_BUFFER_SIZE/2)-1.0);
 	}
 
 	while(1)
 	{
 		// do Karplus Strong filtering
-		for (n = 0; n < PLAYBACK_BUFFER_SIZE; n++)
+		for (n = 0; n < CHANNEL_BUFFER_SIZE; n++)
 		{
 			d = damp * buf_f[n] + (1-damp) * d;
 			buf_f[n] = d;
@@ -67,7 +68,7 @@ static msg_t synthThread(void *arg) {  // THE SYNTH THREAD
 			bufSwitch=1;
 		}
 		// convert float to int with scale, clamp and round
-		for (n = 0; n < PLAYBACK_BUFFER_SIZE; n++)
+		for (n = 0; n < CHANNEL_BUFFER_SIZE; n++)
 		{
 			tmp = (int32_t)(buf_f[n] * 32768);
 			tmp = (tmp <= -32768) ? -32768 : (tmp >= 32767) ? 32767 : tmp;
@@ -78,7 +79,8 @@ static msg_t synthThread(void *arg) {  // THE SYNTH THREAD
 			} else {
 				palClearPad(GPIOD, GPIOD_LED3);       /* Orange.  */
 			}
-			buf[n] = (int16_t)tmp;
+			// make both audio channels the same
+			buf[2*n] = buf[2*n+1] = (int16_t)tmp;
 		}
 
 		chEvtWaitOne(1);
