@@ -1,8 +1,12 @@
-==============================
- STM32F4 Discovery Audio Demo
-==============================
+============================
+ STM32F4 Simple Synthesizer
+============================
 
-This code runs on ChibiOS 2.6.3
+A simple Karplus-Strong synthesizer running on the STM32F4-Discovery board.
+The synthesizer is triggered after reset.
+
+This code runs on ChibiOS 2.6.3, put the ChibiOS directory in the same
+directory as this.
 
 The code for controlling the onboard CS43L22 DAC and sending data to it via
 DMA is from the implementation by Abhishek.
