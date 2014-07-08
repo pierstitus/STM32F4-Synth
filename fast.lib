@@ -1,0 +1,65 @@
+//fast.lib - Faust functions for fast approximations of various functions
+declare name "Faust Fast Approximations Library";
+declare author "Piers Titus van der Torren (pierstitus@toverlamp.org)";
+declare licence "BSD"; // 
+
+import("music.lib");
+
+// 2^x approximation
+fastpow2 = ffunction(float fastpow2 (float), "fastpow.h", "");
+
+// integer divide
+idiv = ffunction(int idiv (int, int),"fastpow.h","");
+
+// fast midi note to frequency function
+note2freq(note) = 8.175798916 * fastpow2(note/12.0);
+
+// tailor approximation of tan for [0,pi/4]
+tan0(a) = (((2.033e-01 * a^2) + 3.1755e-01) * a^2 + 1.0) * a;
+
+// biquad filters section
+biquad(a0,a1,a2,b1,b2,x)  =  x : + ~ ((-1)*conv2(b1, b2)) : conv3(a0, a1, a2) 
+    with {
+        conv2(c0,c1,x) = c0*x+c1*x';
+        conv3(c0,c1,c2,x) = c0*x+c1*x'+c2*x'';
+    };
+
+// fast approximation for K in the following biquad filters
+K_f0(f0) = tan0(PI * f0 / SR);
+
+// Low Pass Filter
+LPF(K, Q) = biquad(a0,a1,a2,b1,b2)
+    with {
+        //K = tan(PI * f0 / SR);
+        norm = 1 / (1 + K / Q + K * K);
+        a0 = K * K * norm;
+        a1 = 2 * a0;
+        a2 = a0;
+        b1 = 2 * (K * K - 1) * norm;
+        b2 = (1 - K / Q + K * K) * norm;
+    };
+
+// High Pass Filter
+HPF(K, Q) = biquad(a0,a1,a2,b1,b2)
+    with {
+        //K = tan(PI * f0 / SR);
+        norm = 1 / (1 + K / Q + K * K);
+        a0 = 1 * norm;
+        a1 = -2 * a0;
+        a2 = a0;
+        b1 = 2 * (K * K - 1) * norm;
+        b2 = (1 - K / Q + K * K) * norm;
+    };
+
+// Band Pass Filter
+BPF(K, Q) = biquad(a0,a1,a2,b1,b2)
+    with {
+        //K = tan(PI * f0 / SR);
+        norm = 1 / (1 + K / Q + K * K);
+        a0 = K / Q * norm;
+        a1 = 0;
+        a2 = -a0;
+        b1 = 2 * (K * K - 1) * norm;
+        b2 = (1 - K / Q + K * K) * norm;
+    };
+

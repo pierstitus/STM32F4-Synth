@@ -1,0 +1,6 @@
+.dep/
+build/
+synth
+synth-svg/
+synth.c
+synth.cpp

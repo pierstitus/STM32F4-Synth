@@ -25,6 +25,8 @@ enum CODEC_AUDIOSRC {
 
 #define CS43L22_ADDR	(0x94 >> 1)
 
+extern Thread* audioThread;
+
 extern void codec_hw_init(void);
 
 extern void codec_hw_reset(void);

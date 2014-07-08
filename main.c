@@ -4,130 +4,145 @@
 #include "hal.h"
 
 #include "chprintf.h"
+#include "lis302dl.h"
 
 // User Includes
 #include "codec.h"
 
-Thread* playerThread;
+#include "synth.h"
+#include <math.h>
 
-// Application Title
-const char appTitle[]="STM32F4D-ChibiOS Audio Demo";
-Thread* mainThread;
+#include "usbcfg.h"
 
-#define PLAYBACK_BUFFER_SIZE	256
-#define CHANNEL_BUFFER_SIZE		(PLAYBACK_BUFFER_SIZE/2)
-int16_t buf1[PLAYBACK_BUFFER_SIZE]={0};
-int16_t buf2[PLAYBACK_BUFFER_SIZE]={0};
-float buf_f[CHANNEL_BUFFER_SIZE] = {0.0};
-
-static WORKING_AREA(waThread2, 256);
-static msg_t synthThread(void *arg) {  // THE SYNTH THREAD
-	(void)arg;
-	chRegSetThreadName("SYNTH");
-
-	uint_fast8_t bufSwitch=1;
-	int16_t* buf = buf1;
-	int32_t tmp;
-
-	unsigned int n;
-
-	float d = 0;
-	float damp = 0.3;
-
-	buf_f[0] = 200;
-
-	codec_pwrCtl(1);    // POWER ON
-	codec_muteCtl(0);   // MUTE OFF
-
-	chEvtAddEvents(1);
-
-	// start with a square wave
-	for (n = 0; n < CHANNEL_BUFFER_SIZE; n++)
-	{
-		buf_f[n] = (2.0*(n<CHANNEL_BUFFER_SIZE/2)-1.0);
-	}
-
-	while(1)
-	{
-		// do Karplus Strong filtering
-		for (n = 0; n < CHANNEL_BUFFER_SIZE; n++)
-		{
-			d = damp * buf_f[n] + (1-damp) * d;
-			buf_f[n] = d;
-		}
-
-		// double buffering
-		if (bufSwitch)
-		{
-			buf = buf1;
-			bufSwitch=0;
-		}
-		else
-		{
-			buf = buf2;
-			bufSwitch=1;
-		}
-		// convert float to int with scale, clamp and round
-		for (n = 0; n < CHANNEL_BUFFER_SIZE; n++)
-		{
-			tmp = (int32_t)(buf_f[n] * 32768);
-			tmp = (tmp <= -32768) ? -32768 : (tmp >= 32767) ? 32767 : tmp;
-			// enable LED on clip
-			if (tmp <= -32768 || tmp >= 32767)
-			{
-				palSetPad(GPIOD, GPIOD_LED3);       /* Orange.  */
-			} else {
-				palClearPad(GPIOD, GPIOD_LED3);       /* Orange.  */
-			}
-			// make both audio channels the same
-			buf[2*n] = buf[2*n+1] = (int16_t)tmp;
-		}
-
-		chEvtWaitOne(1);
-		codec_audio_send(buf, PLAYBACK_BUFFER_SIZE);
-
-		if (chThdShouldTerminate()) break;
-	}
-
-	codec_muteCtl(1);
-	codec_pwrCtl(0);
-
-	playerThread=NULL;
-	palTogglePad(GPIOD, GPIOD_LED5);
-
-	return 0;
+// next lines are necessary since synth_contol.cpp is included
+// and are copied from ChibiOS/testhal/STM32F4xx/RTC/main.c
+/* libc stub */
+int _getpid(void) {return 1;}
+/* libc stub */
+void _exit(int i) {(void)i;while(1);}
+/* libc stub */
+#include <errno.h>
+#undef errno
+extern int errno;
+int _kill(int pid, int sig) {
+  (void)pid;
+  (void)sig;
+  errno = EINVAL;
+  return -1;
 }
 
+// sqrtf which uses FPU, the standard one apparently doesn't
+float vsqrtf(float op1) {
+  float result;
+  __ASM volatile ("vsqrt.f32 %0, %1" : "=w" (result) : "w" (op1) );
+  return (result);
+}
+
+BaseSequentialStream* chp;
+
+/* Virtual serial port over USB.*/
+SerialUSBDriver SDU1;
+
+static SerialConfig ser_cfg = {
+    2000000,
+    0,
+    0,
+    0,
+};
 
 /*
- * This is a periodic thread that does absolutely nothing except flashing
- * a LED and beeping.
+ * SPI1 configuration structure.
+ * Speed 5.25MHz, CPHA=1, CPOL=1, 8bits frames, MSb transmitted first.
+ * The slave select line is the pin GPIOE_CS_SPI on the port GPIOE.
  */
-static WORKING_AREA(waThread1, 128);
+static const SPIConfig spi1cfg = {
+  NULL,
+  /* HW dependent part.*/
+  GPIOE,
+  GPIOE_CS_SPI,
+  SPI_CR1_BR_0 | SPI_CR1_BR_1 | SPI_CR1_CPOL | SPI_CR1_CPHA
+};
+/*
+ * This is a periodic thread that reads accelerometer and sends messages
+ */
+static WORKING_AREA(waThreadAccel, 128);
 __attribute__  ((noreturn))
-static msg_t Thread1(void *arg) {
-	(void)arg;
-	chRegSetThreadName("blinker");
+static msg_t ThreadAccel(void *arg) {\
+  systime_t time;                   /* Next deadline.*/
+  float acc_x, acc_y, acc_z, acc_abs;
 
-	while (TRUE)
-	{
-		palSetPad(GPIOD, GPIOD_LED3);       /* Orange.  */
-		chThdSleepMilliseconds(500);
-		palClearPad(GPIOD, GPIOD_LED3);     /* Orange.  */
-		chThdSleepMilliseconds(500);
-		codec_sendBeep();
-	}
+  (void)arg;
+  chRegSetThreadName("accel");
+
+  /* LIS302DL initialization.*/
+  lis302dlWriteRegister(&SPID1, LIS302DL_CTRL_REG1, 0b11000111); // 01000011 DR-0:100Hz, 1:400Hz PD-PowerDown FS-0:2g 1:8g STP STM Zen Yen Xen  // 0x43
+  lis302dlWriteRegister(&SPID1, LIS302DL_CTRL_REG2, 0x00);
+  lis302dlWriteRegister(&SPID1, LIS302DL_CTRL_REG3, 0x00);
+
+  /* Reader thread loop.*/
+  time = chTimeNow();
+  while (TRUE) {
+    /* Reading MEMS accelerometer X and Y registers.*/
+    // Hard-coded calibration values, * 1.12 offset
+    acc_x = ((float)(int8_t)lis302dlReadRegister(&SPID1, LIS302DL_OUTX))/64*1.0+0.0;
+    acc_y = ((float)(int8_t)lis302dlReadRegister(&SPID1, LIS302DL_OUTY))/64*1.0+0.0;
+    acc_z = ((float)(int8_t)lis302dlReadRegister(&SPID1, LIS302DL_OUTZ))/64*1.0+0.0;
+
+    #define pow2(x) (x*x)
+    acc_abs = vsqrtf(pow2(acc_x) + pow2(acc_y) + pow2(acc_z));
+    if (acc_abs>0.001) {
+      acc_x /= acc_abs;
+      acc_y /= acc_abs;
+      acc_z /= acc_abs;
+    }
+    *(synth_interface.acc_abs) = acc_abs;
+    *(synth_interface.acc_x) = acc_x;
+    *(synth_interface.acc_y) = acc_y;
+    *(synth_interface.acc_z) = acc_z;
+
+    /*
+    chprintf(chp, "%4d %4d %4d %4d \r",
+             (int)(1000*acc_x), 
+             (int)(1000*acc_y),
+             (int)(1000*acc_z),
+             (int)(1000*acc_abs));
+    */
+
+    /* Waiting until the next 10 milliseconds time interval.*/
+    chThdSleepUntil(time += MS2ST(2));
+  }
 }
+
 
 // Hardware Initialization
 static void hw_init(void)
 {
 	// Init Serial Port
-	sdStart(&SD2, NULL);
+	sdStart(&SD2, &ser_cfg);
 	palSetPadMode(GPIOA, 2, PAL_MODE_ALTERNATE(7));
 	palSetPadMode(GPIOA, 3, PAL_MODE_ALTERNATE(7));
 
-	codec_hw_init();
+  /* Initializes a serial-over-USB CDC driver. */
+  sduObjectInit(&SDU1);
+  sduStart(&SDU1, &serusbcfg);
+
+  /*
+   * Initializes the SPI driver 1 in order to access the MEMS. The signals
+   * are already initialized in the board file.
+   */
+  spiStart(&SPID1, &spi1cfg);
+
+  /*
+   * Activates the USB driver and then the USB bus pull-up on D+.
+   * Note, a delay is inserted in order to not have to disconnect the cable
+   * after a reset.
+   */
+  usbDisconnectBus(serusbcfg.usbp);
+  chThdSleepMilliseconds(1000);
+  usbStart(serusbcfg.usbp, &usbcfg);
+  usbConnectBus(serusbcfg.usbp);
+
+  codec_hw_init();
 }
 
 static VirtualTimer vt1;
@@ -145,14 +160,18 @@ int main(void)
 	halInit();
 	chSysInit();
 
-	mainThread=chThdSelf();
+	chThdSelf();
 
 	hw_init();
 
+  chp = (BaseSequentialStream *)&SDU1; // output for chprintf
+
 	codec_i2s_init(44100, 16);
 
-	playerThread=chThdCreateStatic(waThread2, sizeof(waThread2), NORMALPRIO, synthThread, NULL);
-	//chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
+	start_synth_thread();
+	chThdSleep(10);
+
+	chThdCreateStatic(waThreadAccel, sizeof(waThreadAccel), NORMALPRIO, ThreadAccel, NULL);
 
 	chVTSetI(&vt1, 500, led_toggle, NULL);
 

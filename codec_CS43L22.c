@@ -3,6 +3,8 @@
  *
  *  Created on: Jun 7, 2012
  *      Author: Kumar Abhishek
+ *
+ *  Modified by Piers Titus van der Torren, 2014
  */
 
 #include "codec.h"
@@ -12,7 +14,7 @@
 const stm32_dma_stream_t* i2sdma;
 static uint32_t i2stxdmamode=0;
 
-extern Thread* playerThread;
+Thread* audioThread;
 
 static const I2CConfig i2cfg = {
     OPMODE_I2C,
@@ -106,7 +108,7 @@ static void dma_i2s_interrupt(void* dat, uint32_t flags)
 	dmaStreamDisable(i2sdma);
 
 	chSysLockFromIsr();
-	chEvtSignalI(playerThread, 1);
+	chEvtSignalI(audioThread, 1);
 	chSysUnlockFromIsr();
 }
 

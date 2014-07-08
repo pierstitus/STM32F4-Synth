@@ -5,17 +5,17 @@
 
 # Compiler options here.
 ifeq ($(USE_OPT),)
-  USE_OPT = -O2 -g2 -fomit-frame-pointer -falign-functions=16 -std=gnu99
+  USE_OPT = -O2 -ggdb -fomit-frame-pointer -falign-functions=16
 endif
 
 # C specific options here (added to USE_OPT).
 ifeq ($(USE_COPT),)
-  USE_COPT = 
+  USE_COPT = -std=gnu99
 endif
 
 # C++ specific options here (added to USE_OPT).
 ifeq ($(USE_CPPOPT),)
-  USE_CPPOPT = -fno-rtti
+  USE_CPPOPT = -fno-rtti -std=gnu++11
 endif
 
 # Enable this if you want the linker to remove unused code and data
@@ -42,7 +42,6 @@ endif
 #
 
 # Enables the use of FPU on Cortex-M4.
-# Enable this if you really want to use the STM FWLib.
 ifeq ($(USE_FPU),)
   USE_FPU = yes
 endif
@@ -88,10 +87,11 @@ CSRC = $(PORTSRC) \
        $(CHIBIOS)/os/various/syscalls.c \
        main.c		\
        codec_CS43L22.c \
+       usbcfg.c 
 
 # C++ sources that can be compiled in ARM or THUMB mode depending on the global
 # setting.
-CPPSRC =
+CPPSRC = synth.cpp
 
 # C sources to be compiled in ARM mode regardless of the global setting.
 # NOTE: Mixing ARM and THUMB mode enables the -mthumb-interwork compiler
@@ -203,7 +203,7 @@ UINCDIR =
 ULIBDIR =
 
 # List all user libraries here
-ULIBS =
+ULIBS = -lm
 
 #
 # End of user defines
@@ -227,3 +227,6 @@ include $(CHIBIOS)/os/ports/GCC/ARMCMx/rules.mk
 
 prog: all
 	dfu-util -d0483:df11 -a0 -s0x8000000 -D $(BUILDDIR)/$(PROJECT).bin
+
+synth.cpp: synth.dsp faust_synth_template.cpp
+	./faust2stm32f4.py

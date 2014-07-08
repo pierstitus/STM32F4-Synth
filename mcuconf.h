@@ -208,7 +208,7 @@
  */
 #define STM32_SERIAL_USE_USART1             FALSE
 #define STM32_SERIAL_USE_USART2             TRUE
-#define STM32_SERIAL_USE_USART3             FALSE
+#define STM32_SERIAL_USE_USART3             TRUE
 #define STM32_SERIAL_USE_UART4              FALSE
 #define STM32_SERIAL_USE_UART5              FALSE
 #define STM32_SERIAL_USE_USART6             FALSE
@@ -244,7 +244,7 @@
  */
 #define STM32_UART_USE_USART1               FALSE
 #define STM32_UART_USE_USART2               TRUE
-#define STM32_UART_USE_USART3               FALSE
+#define STM32_UART_USE_USART3               TRUE
 #define STM32_UART_USE_UART4                FALSE
 #define STM32_UART_USE_UART5                FALSE
 #define STM32_UART_USE_USART6               FALSE
@@ -277,7 +277,7 @@
 /*
  * USB driver system settings.
  */
-#define STM32_USB_USE_OTG1                  FALSE
+#define STM32_USB_USE_OTG1                  TRUE
 #define STM32_USB_USE_OTG2                  FALSE
 #define STM32_USB_OTG1_IRQ_PRIORITY         14
 #define STM32_USB_OTG2_IRQ_PRIORITY         14
