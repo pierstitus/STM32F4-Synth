@@ -1,5 +1,6 @@
 /*
  * codec_CS43L22.c
+ * ChibiOS driver for the CS43L22 audio codec available on STM32F4-Discovery.
  *
  *  Created on: Jun 7, 2012
  *      Author: Kumar Abhishek

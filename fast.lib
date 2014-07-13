@@ -1,7 +1,7 @@
 //fast.lib - Faust functions for fast approximations of various functions
 declare name "Faust Fast Approximations Library";
 declare author "Piers Titus van der Torren (pierstitus@toverlamp.org)";
-declare licence "BSD"; // 
+declare licence "Apache-2.0";
 
 import("music.lib");
 
